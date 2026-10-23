@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1020">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Level 4 Dental Tracker</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--card:#151d30;--line:#2b3852;--text:#f4f7ff;--muted:#aab6cc;--green:#22c55e;--blue:#60a5fa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;padding:18px;line-height:1.45}
+main{max-width:760px;margin:auto}.hero,.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px}
+h1{font-size:25px;margin:0 0 4px}h2{font-size:20px;margin:0 0 12px}p,.muted{color:var(--muted);font-size:14px}
+.stats{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0 8px}.big{font-size:24px;font-weight:800;color:var(--green)}
+progress{width:100%;height:9px;accent-color:var(--green)}
+.subject{padding:14px 0;border-bottom:1px solid var(--line)}.subject:last-child{border:0}.subhead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;font-weight:650}
+.checks{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px}
+.check{height:35px;border:1px solid var(--line);border-radius:8px;background:#0d1527;color:var(--muted);font-size:13px;cursor:pointer}
+.check.done{background:#166534;border-color:#22c55e;color:white;font-weight:bold}
+table{width:100%;border-collapse:collapse}th,td{text-align:right;padding:9px 4px;border-bottom:1px solid var(--line);font-size:13px}th{color:var(--muted)}
+input[type=number]{width:65px;max-width:100%;padding:9px 5px;border:1px solid var(--line);border-radius:9px;background:#0d1527;color:white;font-size:16px}
+button.action{border:1px solid var(--line);border-radius:10px;background:#202d45;color:white;padding:10px 13px;font-size:14px;cursor:pointer}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.note{font-size:12px;color:var(--muted);margin-top:12px}
+@media(max-width:390px){body{padding:10px}.hero,.panel{padding:13px}.check{height:32px;font-size:12px}.checks{gap:3px}}
+</style>
+</head>
+<body><main>
+<section class="hero">
+<h1>LEVEL 4 — Dental Tracker</h1><p>متابعة المحاضرات والـ Patients — بياناتك بتتحفظ على نفس المتصفح تلقائيًا.</p>
+<div class="stats"><span>المحاضرات المكتملة</span><span class="big" id="total">0 / 110</span></div>
+<progress id="progress" value="0" max="110"></progress>
+</section>
+<section class="panel">
+<h2>1) Lecture Tracker</h2><div id="lectures"></div>
+</section>
+<section class="panel">
+<h2>2) Clinical Patient Tracker</h2>
+<table><thead><tr><th>المادة</th><th>خلصت</th><th>المطلوب</th></tr></thead><tbody id="patients"></tbody></table>
+<div class="stats"><span>إجمالي المرضى اللي خلصوا</span><span class="big" id="donePatients">0</span></div>
+<div class="stats"><span>إجمالي الـ Target</span><strong id="targetPatients">0</strong></div>
+<div class="actions"><button class="action" id="export">تنزيل نسخة احتياطية</button><button class="action" id="reset">تصفير الكل</button></div>
+<p class="note">مهم: الحفظ التلقائي بيكون على نفس الجهاز والمتصفح. نزّل نسخة احتياطية من وقت للتاني، خصوصًا قبل مسح بيانات Safari أو تغيير الجهاز.</p>
+</section>
+</main>
+<script>
+const subjects=["General Medicine","Fixed","Photography","Removable","Perio","Operative","Surgery","Endo","Special Care","Oral Medicine","G. Surgery"];
+const patientSubjects=["Oral & Maxillofacial Surgery","Operative","Endodontics (Endo)","Fixed","Removable","Perio"];
+const key="level4DentalTracker_v1";
+let state={lectures:Array(110).fill(false),counts:Array(6).fill(""),targets:Array(6).fill("")};
+try{const saved=JSON.parse(localStorage.getItem(key));if(saved){state={...state,...saved};}}catch(e){}
+function save(){try{localStorage.setItem(key,JSON.stringify(state));}catch(e){}}
+function renderLectures(){
+ const root=document.getElementById("lectures");root.innerHTML="";
+ subjects.forEach((s,i)=>{
+  const wrap=document.createElement("div");wrap.className="subject";
+  const head=document.createElement("div");head.className="subhead";
+  const name=document.createElement("span");name.textContent=(i+1)+". "+s;
+  const count=document.createElement("span");count.className="muted";count.id="count"+i;
+  head.append(name,count);wrap.append(head);
+  const grid=document.createElement("div");grid.className="checks";
+  for(let j=0;j<10;j++){let idx=i*10+j;const b=document.createElement("button");b.className="check"+(state.lectures[idx]?" done":"");b.textContent=state.lectures[idx]?"✓":j+1;b.setAttribute("aria-label",s+" lecture "+(j+1));b.onclick=()=>{state.lectures[idx]=!state.lectures[idx];save();renderLectures();updateStats()};grid.append(b)}
+  wrap.append(grid);root.append(wrap);
+ });
+}
+function renderPatients(){
+ const root=document.getElementById("patients");root.innerHTML="";
+ patientSubjects.forEach((s,i)=>{const tr=document.createElement("tr");const td=document.createElement("td");td.textContent=s;
+ const td2=document.createElement("td"),a=document.createElement("input");a.type="number";a.min="0";a.inputMode="numeric";a.placeholder="0";a.value=state.counts[i];a.setAttribute("aria-label",s+" patients completed");a.oninput=()=>{state.counts[i]=a.value;save();updateStats()};td2.append(a);
+ const td3=document.createElement("td"),b=document.createElement("input");b.type="number";b.min="0";b.inputMode="numeric";b.placeholder="—";b.value=state.targets[i];b.setAttribute("aria-label",s+" patient target");b.oninput=()=>{state.targets[i]=b.value;save();updateStats()};td3.append(b);tr.append(td,td2,td3);root.append(tr)});
+}
+function updateStats(){
+ const n=state.lectures.filter(Boolean).length;document.getElementById("total").textContent=n+" / 110";document.getElementById("progress").value=n;
+ subjects.forEach((s,i)=>{let n=state.lectures.slice(i*10,i*10+10).filter(Boolean).length;let el=document.getElementById("count"+i);if(el)el.textContent=n+"/10"});
+ document.getElementById("donePatients").textContent=state.counts.reduce((a,v)=>a+Math.max(0,Number(v)||0),0);
+ document.getElementById("targetPatients").textContent=state.targets.reduce((a,v)=>a+Math.max(0,Number(v)||0),0);
+}
+document.getElementById("export").onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="level4-dental-tracker-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+document.getElementById("reset").onclick=()=>{if(confirm("متأكد إنك عايز تصفّر المحاضرات وأعداد المرضى كلها؟")){state={lectures:Array(110).fill(false),counts:Array(6).fill(""),targets:Array(6).fill("")};save();renderLectures();renderPatients();updateStats()}};
+renderLectures();renderPatients();updateStats();
+</script><script>if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("./sw.js").catch(()=>{});</script>
+</body></html>
